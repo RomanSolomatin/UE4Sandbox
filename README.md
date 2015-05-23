@@ -5,4 +5,4 @@ What it has:
 - Automatic door
 
 2015-05-23 Demo:
-- https://www.youtube.com/embed/ZA6R1K9vfbM
+- https://youtu.be/ZA6R1K9vfbM
