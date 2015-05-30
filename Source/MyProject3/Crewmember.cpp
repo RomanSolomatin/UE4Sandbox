@@ -56,6 +56,24 @@ void ACrewmember::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+    FVector  CamLoc;
+    FRotator CamRot;
+    Controller->GetPlayerViewPoint(CamLoc, CamRot);
+
+    static FName WeaponFireTag = FName(TEXT("WeaponTrace"));
+    //GetWorld()->DebugDrawTraceTag   = WeaponFireTag; // Enable debug tracing
+    const FVector StartTrace        = CamLoc;
+    const FVector Direction         = CamRot.Vector();
+    const FVector EndTrace          = StartTrace + Direction * 150;
+
+    // Perform trace to retrieve hit info
+    FCollisionQueryParams TraceParams(WeaponFireTag, true, this);
+    TraceParams.bTraceAsyncScene = true;
+    TraceParams.bReturnPhysicalMaterial = false;
+    
+    FHitResult Hit(ForceInit);
+    GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECC_Visibility, TraceParams);
+
 }
 
 // Called to bind functionality to input
