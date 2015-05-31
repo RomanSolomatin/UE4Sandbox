@@ -41,18 +41,21 @@ public:
 	bool EndFocus();
 
 protected:
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = Pickup)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = Pickup)
+	UBoxComponent* CollisionBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	FText Name;
 
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = Pickup)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	bool bShowName;
 
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = Pickup)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	bool bIsStackable;
 
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = Pickup)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	int32 MaxStackSize;
 
-	UPROPERTY(BlueprintReadWrite, Replicated, Category = Pickup)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	UTexture2D* InventoryImage;
 };
