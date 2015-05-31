@@ -18,11 +18,11 @@ void AItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimePro
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(AItem, Name);
-    DOREPLIFETIME(AItem, bShowName);
-    DOREPLIFETIME(AItem, bIsStackable);
-    DOREPLIFETIME(AItem, MaxStackSize);
-    DOREPLIFETIME(AItem, InventoryImage);
+	DOREPLIFETIME(AItem, Name);
+	DOREPLIFETIME(AItem, bShowName);
+	DOREPLIFETIME(AItem, bIsStackable);
+	DOREPLIFETIME(AItem, MaxStackSize);
+	DOREPLIFETIME(AItem, InventoryImage);
 }
 
 
@@ -43,14 +43,14 @@ void AItem::Tick(float DeltaTime)
 // Test to see if item can be used
 bool AItem::CanUse(ACharacter* Character, UActorComponent* Component)
 {
-    return true;
+	return true;
 }
 
 // Attempt to use item
 void AItem::Use_Implementation(ACharacter* Character, UActorComponent* Component)
 {
-    UE_LOG(LogTemp, Log, TEXT("Hello"));//, *GetNameSafe(this), *GetNameSafe(Impact.GetActor()));
-    Destroy();
+	UE_LOG(LogTemp, Log, TEXT("Hello"));//, *GetNameSafe(this), *GetNameSafe(Impact.GetActor()));
+	Destroy();
 }
 
 // Validate inputs
@@ -70,3 +70,5 @@ bool AItem::EndFocus()
 {
 	return false;
 }
+
+/* vim: set noexpandtab: */

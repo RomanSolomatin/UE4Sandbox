@@ -59,3 +59,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = Pickup)
 	UTexture2D* InventoryImage;
 };
+
+/* vim: set noexpandtab: */

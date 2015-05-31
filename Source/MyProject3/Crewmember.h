@@ -46,3 +46,5 @@ protected:
 	// Called for right/left input
 	void MoveRight(float Value);
 };
+
+/* vim: set noexpandtab: */
