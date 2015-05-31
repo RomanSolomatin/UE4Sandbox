@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "Item.h"
 #include "Crewmember.generated.h"
 
 UCLASS()
@@ -27,10 +28,21 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 
 protected:
+	void VisionTrace(FHitResult& Hit);
+
+	UPROPERTY(Transient)
+	class AItem* FocusedItem;
+
+	void AttemptUse();
+
+	UFUNCTION(Server, NetMulticast, Reliable, WithValidation, BlueprintCallable, Category = Pickup)
+	void ServerAttemptUse();
+	virtual void ServerAttemptUse_Implementation();
+	bool ServerAttemptUse_Validate();
+
 	// Called for forwards/backward input
 	void MoveForward(float Value);
 
 	// Called for right/left input
 	void MoveRight(float Value);
-	
 };

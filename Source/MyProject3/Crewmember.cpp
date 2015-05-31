@@ -43,6 +43,15 @@ ACrewmember::ACrewmember(const FObjectInitializer& ObjectInitializer)
 	//FirstPersonCamera->bUsePawnControlRotation = true;
 }
 
+/*
+void ACrewmember::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    //DOREPLIFETIME(ACrewmember, FocusedItem);
+}
+*/
+
 // Called when the game starts or when spawned
 void ACrewmember::BeginPlay()
 {
@@ -56,24 +65,32 @@ void ACrewmember::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+    FHitResult Hit(ForceInit);
+    VisionTrace(Hit);
+
+    auto Item   = Cast<AItem>(Hit.GetActor());
+    FocusedItem = Item;
+}
+
+void ACrewmember::VisionTrace(FHitResult& Hit)
+{
     FVector  CamLoc;
     FRotator CamRot;
     Controller->GetPlayerViewPoint(CamLoc, CamRot);
 
-    static FName WeaponFireTag = FName(TEXT("WeaponTrace"));
-    //GetWorld()->DebugDrawTraceTag   = WeaponFireTag; // Enable debug tracing
-    const FVector StartTrace        = CamLoc;
-    const FVector Direction         = CamRot.Vector();
-    const FVector EndTrace          = StartTrace + Direction * 150;
+    static FName CharacterVisionTrace = FName(TEXT("CharacterVisionTrace"));
+    //GetWorld()->DebugDrawTraceTag     = CharacterVisionTrace; // Enable debug tracing
+    const FVector StartTrace          = CamLoc;
+    const FVector Direction           = CamRot.Vector();
+    const FVector EndTrace            = StartTrace + Direction * 180;
 
     // Perform trace to retrieve hit info
-    FCollisionQueryParams TraceParams(WeaponFireTag, true, this);
+    FCollisionQueryParams TraceParams(CharacterVisionTrace, true, this);
     TraceParams.bTraceAsyncScene = true;
     TraceParams.bReturnPhysicalMaterial = false;
     
-    FHitResult Hit(ForceInit);
     GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECC_Visibility, TraceParams);
-
+    //UE_LOG(LogTemp, Log, TEXT("Looking at %s"), *GetNameSafe(Hit.GetActor()));
 }
 
 // Called to bind functionality to input
@@ -83,24 +100,54 @@ void ACrewmember::SetupPlayerInputComponent(class UInputComponent* InputComponen
 
 	InputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	InputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	InputComponent->BindAction("Use", IE_Pressed, this, &ACrewmember::AttemptUse);
     InputComponent->BindAxis("MoveForward", this, &ACrewmember::MoveForward);
     InputComponent->BindAxis("MoveRight", this, &ACrewmember::MoveRight);
 	InputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
 	InputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 }
 
+void ACrewmember::AttemptUse()
+{
+    UE_LOG(LogTemp, Log, TEXT("Client wants to use %s"), *GetNameSafe(FocusedItem));
+    if (FocusedItem && FocusedItem->CanUse(this, NULL))
+    {
+        UE_LOG(LogTemp, Log, TEXT("Asking server to use"));
+        ServerAttemptUse();
+    }
+}
+
+void ACrewmember::ServerAttemptUse_Implementation()
+{
+    UE_LOG(LogTemp, Log, TEXT("Server validating use"));
+
+    FHitResult Hit(ForceInit);
+    VisionTrace(Hit);
+    auto Item = Cast<AItem>(Hit.GetActor());
+
+    if (Item && Item->CanUse(this, NULL))
+    {
+        UE_LOG(LogTemp, Log, TEXT("Use validated. Using item."));
+        Item->Use(this, NULL);
+    }
+}
+
+bool ACrewmember::ServerAttemptUse_Validate()
+{
+    return true;
+}
 void ACrewmember::MoveForward(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
-	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+    if ((Controller != NULL) && (Value != 0.0f))
+    {
+        // find out which way is forward
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
-	}
+        // get forward vector
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+        AddMovementInput(Direction, Value);
+    }
 }
 
 void ACrewmember::MoveRight(float Value)
