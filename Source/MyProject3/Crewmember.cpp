@@ -15,8 +15,8 @@ ACrewmember::ACrewmember(const FObjectInitializer& ObjectInitializer)
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw	= true;
-	bUseControllerRotationRoll	= false;
+	bUseControllerRotationYaw   = true;
+	bUseControllerRotationRoll  = false;
 
 	/*
 	Mesh1P = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("PawnMesh1P"));
@@ -79,10 +79,10 @@ void ACrewmember::VisionTrace(FHitResult& Hit)
 	Controller->GetPlayerViewPoint(CamLoc, CamRot);
 
 	static FName CharacterVisionTrace = FName(TEXT("CharacterVisionTrace"));
-	//GetWorld()->DebugDrawTraceTag		= CharacterVisionTrace; // Enable debug tracing
-	const FVector StartTrace		  = CamLoc;
-	const FVector Direction			  = CamRot.Vector();
-	const FVector EndTrace			  = StartTrace + Direction * 180;
+	//GetWorld()->DebugDrawTraceTag     = CharacterVisionTrace; // Enable debug tracing
+	const FVector StartTrace          = CamLoc;
+	const FVector Direction           = CamRot.Vector();
+	const FVector EndTrace            = StartTrace + Direction * 180;
 
 	// Perform trace to retrieve hit info
 	FCollisionQueryParams TraceParams(CharacterVisionTrace, true, this);
@@ -121,6 +121,8 @@ void ACrewmember::ServerAttemptUse_Implementation()
 {
 	UE_LOG(LogTemp, Log, TEXT("Server validating use"));
 
+	// Have server cast ray to see what object they are looking at, since we
+	// don't trust the client
 	FHitResult Hit(ForceInit);
 	VisionTrace(Hit);
 	auto Item = Cast<AItem>(Hit.GetActor());
