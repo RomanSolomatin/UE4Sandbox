@@ -2,6 +2,6 @@
 
 #include "MyProject3.h"
 
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, MyProject3, "MyProject3");
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, MyProject3, "MyProject3" );
- 
+/* vim: set noexpandtab: */
