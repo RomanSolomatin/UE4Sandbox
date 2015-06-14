@@ -29,16 +29,24 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
+
+uint32 GetTypeHash(const FCubalIndex& A)
+{
+	// Nothing special just grabbed some random primes with help of wolfram alpha
+	return (A.X * 0x1cc009bb + A.Y * 0x2c9af989 + A.Z * 0x135d9c09) % 0x50395aab;
+}
+
+
 AStation::AStation()
 	: Super()
 {
 	bCanBeDamaged = false;
 	bReplicates = true;
-	FloorMesh = 0;
-	CeilingMesh = 0;
-	WallMesh = 0;
-	DoorwayMesh = 0;
-	WindowMesh = 0;
+	FloorMesh = nullptr;
+	CeilingMesh = nullptr;
+	WallMesh = nullptr;
+	DoorwayMesh = nullptr;
+	WindowMesh = nullptr;
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	FloorComponent = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("Floor"));
@@ -80,143 +88,199 @@ void AStation::OnConstruction(const FTransform& Transform)
 }
 
 
-void AStation::PlaceFloor_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
+FCubal& AStation::FindOrAddCubal(int32 X, int32 Y, int32 Z)
 {
-	FTransform Transform(FRotator(0, 0, 0),
-	                     FVector(X * TileSize.X,
-	                             Y * TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
+	FCubalIndex Key(X, Y, Z);
+	int32* CubalIndex = CubalMap.Find(Key);
 
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].Floor = type;
-	FloorComponent->AddInstance(Transform);
+	CubalIndex = CubalMap.Find(Key);
+	if (CubalIndex == nullptr)
+	{
+		return Cubal[(CubalMap.Add(Key, Cubal.Add(FCubal(X, Y, Z))))];
+	}
+
+	return Cubal[*CubalIndex];
 }
 
 
-bool AStation::PlaceFloor_Validate(ETileId type, int32 X, int32 Y, int32 Z)
+void AStation::PlaceFloor_Implementation(EFloorId Id, int32 X, int32 Y, int32 Z)
+{
+	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
+
+	if (LocalCubal.FloorInstance >= 0)
+	{
+		FloorComponent->RemoveInstance(LocalCubal.FloorInstance);
+		LocalCubal.FloorInstance = -1;
+	}
+
+	if (Id == EFloorId::Floor)
+	{
+		FTransform Transform(FRotator(0, 0, 0),
+		                     FVector(X * CubalSize.X,
+		                             Y * CubalSize.Y,
+		                             Z * CubalSize.Z),
+		                     FVector(1.0, 1.0, 1.0));
+
+		LocalCubal.Floor = Id;
+		LocalCubal.FloorInstance = FloorComponent->AddInstance(Transform);
+	}
+}
+
+
+bool AStation::PlaceFloor_Validate(EFloorId Id, int32 X, int32 Y, int32 Z)
 {
 	return true;
 }
 
 
-void AStation::PlaceCeiling_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
+void AStation::PlaceCeiling_Implementation(ECeilingId Id, int32 X, int32 Y, int32 Z)
 {
-	FTransform Transform(FRotator(0, 0, 0),
-	                     FVector(X * TileSize.X,
-	                             Y * TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
+	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
 
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].Ceiling = type;
-	CeilingComponent->AddInstance(Transform);
+	if (LocalCubal.CeilingInstance >= 0)
+	{
+		CeilingComponent->RemoveInstance(LocalCubal.CeilingInstance);
+		LocalCubal.CeilingInstance = -1;
+	}
+
+	if (Id == ECeilingId::Ceiling)
+	{
+		FTransform Transform(FRotator(0, 0, 0),
+		                     FVector(X * CubalSize.X,
+		                             Y * CubalSize.Y,
+		                             Z * CubalSize.Z),
+		                     FVector(1.0, 1.0, 1.0));
+
+		LocalCubal.Ceiling = Id;
+		LocalCubal.CeilingInstance = CeilingComponent->AddInstance(Transform);
+	}
 }
 
 
-bool AStation::PlaceCeiling_Validate(ETileId type, int32 X, int32 Y, int32 Z)
+bool AStation::PlaceCeiling_Validate(ECeilingId Id, int32 X, int32 Y, int32 Z)
 {
 	return true;
 }
 
 
-void AStation::PlaceLeftWall_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
+void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, int32 X, int32 Y, int32 Z)
 {
-	FTransform Transform(FRotator(0, 90, 0),
-	                     FVector(X * TileSize.X + TileSize.X,
-	                             Y * TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
+	FTransform Transform;
+	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
 
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].LeftWall = type;
-	WallComponent->AddInstance(Transform);
+	if (LocalCubal.WallInstance(Direction) >= 0)
+	{
+		switch (LocalCubal.Wall(Direction))
+		{
+		case EWallId::Wall:
+			WallComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			LocalCubal.SetWallInstance(Direction, -1);
+			break;
+		case EWallId::Doorway:
+			DoorwayComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			LocalCubal.SetWallInstance(Direction, -1);
+			break;
+		case EWallId::Window:
+			WindowComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			LocalCubal.SetWallInstance(Direction, -1);
+			break;
+		}
+	}
+
+	switch (Direction)
+	{
+	case EWallDirection::Left:
+		Transform = FTransform(FRotator(0, 90, 0),
+		                       FVector((X + 1) * CubalSize.X,
+		                               Y * CubalSize.Y,
+		                               Z * CubalSize.Z),
+		                       FVector(1.0, 1.0, 1.0));
+		break;
+	case EWallDirection::Right:
+		Transform = FTransform(FRotator(0, -90, 0),
+		                       FVector(X * CubalSize.X,
+		                               (Y + 1) * CubalSize.Y,
+		                               Z * CubalSize.Z),
+		                       FVector(1.0, 1.0, 1.0));
+		break;
+	case EWallDirection::Back:
+		Transform = FTransform(FRotator(0, 0, 0),
+		                       FVector(X * CubalSize.X,
+		                               Y * CubalSize.Y,
+		                               Z * CubalSize.Z),
+		                       FVector(1.0, 1.0, 1.0));
+		break;
+	case EWallDirection::Front:
+		Transform = FTransform(FRotator(0, 180, 0),
+		                       FVector((X + 1) * CubalSize.X,
+		                               (Y + 1) * CubalSize.Y,
+		                               Z * CubalSize.Z),
+		                       FVector(1.0, 1.0, 1.0));
+		break;
+	}
+
+	switch (Id)
+	{
+	case EWallId::Wall:
+		LocalCubal.SetWall(Direction, Id);
+		LocalCubal.SetWallInstance(Direction, WallComponent->AddInstance(Transform));
+		break;
+	case EWallId::Doorway:
+		LocalCubal.SetWall(Direction, Id);
+		LocalCubal.SetWallInstance(Direction, DoorwayComponent->AddInstance(Transform));
+		break;
+	case EWallId::Window:
+		LocalCubal.SetWall(Direction, Id);
+		LocalCubal.SetWallInstance(Direction, WindowComponent->AddInstance(Transform));
+		break;
+	}
 }
 
 
-bool AStation::PlaceLeftWall_Validate(ETileId type, int32 X, int32 Y, int32 Z)
+bool AStation::PlaceWall_Validate(EWallDirection Direction, EWallId Id, int32 X, int32 Y, int32 Z)
 {
 	return true;
 }
 
 
-void AStation::PlaceRightWall_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
+void AStation::RebuildCubal(int32 CubalIndex)
 {
-	FTransform Transform(FRotator(0, -90, 0),
-	                     FVector(X * TileSize.X,
-	                             Y * TileSize.Y + TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
+	if (CubalIndex < 0 || CubalIndex >= Cubal.Num())
+	{
+		return;
+	}
 
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].RightWall = type;
-	WallComponent->AddInstance(Transform);
-}
+	FCubal &LocalCubal = Cubal[CubalIndex];
 
-
-bool AStation::PlaceRightWall_Validate(ETileId type, int32 X, int32 Y, int32 Z)
-{
-	return true;
-}
-
-
-void AStation::PlaceFrontWall_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
-{
-	FTransform Transform(FRotator(0, 180, 0),
-	                     FVector(X * TileSize.X + TileSize.X,
-	                             Y * TileSize.Y + TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
-
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].FrontWall = type;
-	WallComponent->AddInstance(Transform);
-}
-
-
-bool AStation::PlaceFrontWall_Validate(ETileId type, int32 X, int32 Y, int32 Z)
-{
-	return true;
-}
-
-
-void AStation::PlaceBackWall_Implementation(ETileId type, int32 X, int32 Y, int32 Z)
-{
-	FTransform Transform(FRotator(0, 0, 0),
-	                     FVector(X * TileSize.X,
-	                             Y * TileSize.Y,
-	                             Z * TileSize.Z),
-	                     FVector(1.0, 1.0, 1.0));
-
-
-	/* TODO: Add sanity checks */
-	Map.Deck[Z].Row[Y].Room[X].BackWall = type;
-	WallComponent->AddInstance(Transform);
-}
-
-
-bool AStation::PlaceBackWall_Validate(ETileId type, int32 X, int32 Y, int32 Z)
-{
-	return true;
+	PlaceFloor(LocalCubal.Floor, LocalCubal.Index.X,
+		   LocalCubal.Index.Y, LocalCubal.Index.Z);
+	PlaceCeiling(LocalCubal.Ceiling, LocalCubal.Index.X,
+		     LocalCubal.Index.Y, LocalCubal.Index.Z);
+	PlaceWall(EWallDirection::Back, LocalCubal.BackWall,
+		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	PlaceWall(EWallDirection::Front, LocalCubal.FrontWall,
+		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	PlaceWall(EWallDirection::Left, LocalCubal.LeftWall,
+		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	PlaceWall(EWallDirection::Right, LocalCubal.RightWall,
+		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 }
 
 
 void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z)
 {
-	Map.Setup(Z, Y, X);
-
 	for (int i = 0; i < X; ++i)
 	{
 		for (int j = 0; j < Y; ++j)
 		{
-			PlaceFloor(ETileId::Floor, i, j, 0);
-			PlaceCeiling(ETileId::Ceiling, i, j, Z - 1);
+			PlaceFloor(EFloorId::Floor, i, j, 0);
+			PlaceCeiling(ECeilingId::Ceiling, i, j, Z - 1);
 		}
 
 		for (int j = 0; j < Z; ++j)
 		{
-			PlaceBackWall(ETileId::Wall, i, 0, j);
-			PlaceFrontWall(ETileId::Wall, i, Y - 1, j);
+			PlaceWall(EWallDirection::Back, EWallId::Wall, i, 0, j);
+			PlaceWall(EWallDirection::Front, EWallId::Wall, i, Y - 1, j);
 		}
 	}
 
@@ -224,8 +288,8 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z)
 	{
 		for (int j = 0; j < Z; ++j)
 		{
-			PlaceLeftWall(ETileId::Wall, 0, i, j);
-			PlaceRightWall(ETileId::Wall, X - 1, i, j);
+			PlaceWall(EWallDirection::Left, EWallId::Wall, X - 1, i, j);
+			PlaceWall(EWallDirection::Right, EWallId::Wall, 0, i, j);
 		}
 	}
 }

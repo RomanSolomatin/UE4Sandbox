@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Containers/Array.h"
+#include "Containers/Map.h"
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
 #include "Station.generated.h"
@@ -34,151 +35,271 @@ class USceneComponent;
 
 
 UENUM(BlueprintType)
-enum class ETileId : uint8
+enum class EWallDirection : uint8
+{
+	Front UMETA(DisplayName="Front"),
+	Back UMETA(DisplayName="Back"),
+	Right UMETA(DisplayName="Right"),
+	Left UMETA(DisplayName="Left"),
+};
 
+UENUM(BlueprintType)
+enum class EFloorId : uint8
 {
 	None UMETA(DisplayName="None"),
 	Floor UMETA(DisplayName="Floor"),
-	Wall UMETA(DisplayName="Wall"),
+};
+
+UENUM(BlueprintType)
+enum class ECeilingId : uint8
+{
+	None UMETA(DisplayName="None"),
 	Ceiling UMETA(DisplayName="Ceiling"),
+};
+
+UENUM(BlueprintType)
+enum class EWallId : uint8
+{
+	None UMETA(DisplayName="None"),
+	Wall UMETA(DisplayName="Wall"),
 	Doorway UMETA(DisplayName="Doorway"),
 	Window UMETA(DisplayName="Window"),
 };
 
 USTRUCT(BluePrintable)
-struct FRoom
+struct FCubalIndex
 {
 	GENERATED_USTRUCT_BODY()
 
-	FRoom() {}
-	
-	void Setup(int32 XPos, int32 YPos, int32 ZLevel)
-	{
-		Floor = ETileId::None;
-		Ceiling = ETileId::None;
-		LeftWall = ETileId::None;
-		FrontWall = ETileId::None;
-		RightWall = ETileId::None;
-		BackWall = ETileId::None;
-		X = XPos;
-		Y = YPos;
-		Z = ZLevel;
-	}
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId Floor;
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId Ceiling;
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId LeftWall;
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId FrontWall;
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId RightWall;
-
-	UPROPERTY(BlueprintReadOnly)
-	ETileId BackWall;
-
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	int32 X;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	int32 Y;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	int32 Z;
+
+	FCubalIndex()
+	{
+		X = 0;
+		Y = 0;
+		Z = 0;
+	}
+
+	FCubalIndex(int32 XPos, int32 YPos, int32 ZPos)
+	{
+		X = XPos;
+		Y = YPos;
+		Z = ZPos;
+	}
+
+	bool operator<(const FCubalIndex& Other) const
+	{
+		if (Z < Other.Z) return true;
+		if (Z > Other.Z) return false;
+		if (Y < Other.Y) return true;
+		if (Y > Other.Y) return false;
+		if (X < Other.X) return true;
+		return false;
+	}
+
+	bool operator<=(const FCubalIndex& Other) const
+	{
+		if (Z < Other.Z) return true;
+		if (Z > Other.Z) return false;
+		if (Y < Other.Y) return true;
+		if (Y > Other.Y) return false;
+		if (X <= Other.X) return true;
+		return false;
+	}
+
+	bool operator>(const FCubalIndex& Other) const
+	{
+		if (Z > Other.Z) return true;
+		if (Z < Other.Z) return false;
+		if (Y > Other.Y) return true;
+		if (Y < Other.Y) return false;
+		if (X > Other.X) return true;
+		return false;
+	}
+
+	bool operator>=(const FCubalIndex& Other) const
+	{
+		if (Z > Other.Z) return true;
+		if (Z < Other.Z) return false;
+		if (Y > Other.Y) return true;
+		if (Y < Other.Y) return false;
+		if (X >= Other.X) return true;
+		return false;
+	}
+
+	bool operator==(const FCubalIndex& Other) const
+	{
+		return (Z == Other.Z && Y == Other.Y && X == Other.X);
+	}
+
+	bool operator!=(const FCubalIndex& Other) const
+	{
+		return (Z != Other.Z || Y != Other.Y || X != Other.X);
+	}
+
 };
+uint32 GetTypeHash(const FCubalIndex& A);
+
 
 USTRUCT(BluePrintable)
-struct FRoomRow
+struct FCubal
 {
 	GENERATED_USTRUCT_BODY()
-	    
-	FRoomRow() {}
 
-	void AddNewRoom(int X)
+	FCubal()
 	{
-		Room.Insert(FRoom(), X);
+		FloorInstance = -1;
+		CeilingInstance = -1;
+		BackWallInstance = -1;
+		FrontWallInstance = -1;
+		LeftWallInstance = -1;
+		RightWallInstance = -1;
+		Floor = EFloorId::None;
+		Ceiling = ECeilingId::None;
+		BackWall = EWallId::None;
+		FrontWall = EWallId::None;
+		LeftWall = EWallId::None;
+		RightWall = EWallId::None;
 	}
 
-	void Setup(int32 YPos, int32 ZLevel, int32 RoomCount)
+	FCubal(int32 X, int32 Y, int32 Z)
+		: Index(X, Y, Z)
 	{
-		Z = ZLevel;
-		Y = YPos;
-		Room.Reserve(RoomCount);
-		for (int32 i = 0; i < RoomCount; ++i)
+		FloorInstance = -1;
+		CeilingInstance = -1;
+		BackWallInstance = -1;
+		FrontWallInstance = -1;
+		LeftWallInstance = -1;
+		RightWallInstance = -1;
+		Floor = EFloorId::None;
+		Ceiling = ECeilingId::None;
+		BackWall = EWallId::None;
+		FrontWall = EWallId::None;
+		LeftWall = EWallId::None;
+		RightWall = EWallId::None;
+	}
+
+	void SetPosition(int32 X, int32 Y, int32 Z)
+	{
+		Index.X = X;
+		Index.Y = Y;
+		Index.Z = Z;
+	}
+
+	// Wall Helper because static arrays are not blueprintable
+	EWallId Wall(EWallDirection Direction) const
+	{
+		switch (Direction)
 		{
-			AddNewRoom(i);
-			Room[i].Setup(i, Y, Z);
+		case EWallDirection::Front:
+			return FrontWall;
+		case EWallDirection::Back:
+			return BackWall;
+		case EWallDirection::Right:
+			return RightWall;
+		case EWallDirection::Left:
+			return LeftWall;
 		}
 	}
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FRoom> Room;
-
-	UPROPERTY(BlueprintReadOnly)
-	int32 Y;
-
-	UPROPERTY(BlueprintReadOnly)
-	int32 Z;
-};
-
-USTRUCT(BluePrintable)
-struct FDeck
-{
-	GENERATED_USTRUCT_BODY();
-
-	FDeck() {}
-
-	void AddNewRow(int Y)
+	// Wall Helper because static arrays are not blueprintable
+	void SetWall(EWallDirection Direction, EWallId Id)
 	{
-	    Row.Insert(FRoomRow(), Y);
-	}
-
-	void Setup(int32 ZLevel, int32 RowCount, int32 ColumnCount)
-	{
-		Z = ZLevel;
-		Row.Reserve(RowCount);
-		for (int32 i = 0; i < RowCount; ++i) {
-			AddNewRow(i);
-			Row[i].Setup(i, Z, ColumnCount);
+		switch (Direction)
+		{
+		case EWallDirection::Front:
+			FrontWall = Id;
+			break;
+		case EWallDirection::Back:
+			BackWall = Id;
+			break;
+		case EWallDirection::Right:
+			RightWall = Id;
+			break;
+		case EWallDirection::Left:
+			LeftWall = Id;
+			break;
 		}
 	}
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FRoomRow> Row;
-
-	UPROPERTY(BlueprintReadOnly)
-	int32 Z;
-};
-
-USTRUCT(BluePrintable)
-struct FStationMap
-{
-	GENERATED_USTRUCT_BODY();
-
-	FStationMap() {}
-
-	void AddNewDeck(int Z)
+	// Wall Helper because static arrays are not blueprintable
+	int32 WallInstance(EWallDirection Direction) const
 	{
-	    Deck.Insert(FDeck(), Z);
+		switch (Direction)
+		{
+		case EWallDirection::Front:
+			return FrontWallInstance;
+		case EWallDirection::Back:
+			return BackWallInstance;
+		case EWallDirection::Right:
+			return RightWallInstance;
+		case EWallDirection::Left:
+			return LeftWallInstance;
+		}
+		return -1;
 	}
 
-	void Setup(int32 DeckCount, int32 RowCount, int32 ColumnCount)
+	// Wall Helper because static arrays are not blueprintable
+	void SetWallInstance(EWallDirection Direction, int32 InstanceIndex)
 	{
-		Deck.Reserve(DeckCount);
-		for (int32 i = 0; i < DeckCount; ++i) {
-			AddNewDeck(i);
-			Deck[i].Setup(i, RowCount, ColumnCount);
+		switch (Direction)
+		{
+		case EWallDirection::Front:
+			FrontWallInstance = InstanceIndex;
+		case EWallDirection::Back:
+			BackWallInstance = InstanceIndex;
+		case EWallDirection::Right:
+			RightWallInstance = InstanceIndex;
+		case EWallDirection::Left:
+			LeftWallInstance = InstanceIndex;
 		}
 	}
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FDeck> Deck;
+	UPROPERTY(BlueprintReadWrite)
+	EFloorId Floor;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 FloorInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	ECeilingId Ceiling;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 CeilingInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	EWallId BackWall;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 BackWallInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	EWallId FrontWall;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 FrontWallInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	EWallId RightWall;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 RightWallInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	EWallId LeftWall;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 LeftWallInstance;
+
+	UPROPERTY(BlueprintReadWrite)
+	FCubalIndex Index;
 };
 
 
@@ -199,33 +320,29 @@ public:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceFloor(ETileId type, int32 X, int32 Y, int32 Z);
+	FCubal& FindOrAddCubal(int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceCeiling(ETileId type, int32 X, int32 Y, int32 Z);
+	void PlaceFloor(EFloorId type, int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceLeftWall(ETileId type, int32 X, int32 Y, int32 Z);
+	void PlaceCeiling(ECeilingId type, int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceFrontWall(ETileId type, int32 X, int32 Y, int32 Z);
-
-	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceRightWall(ETileId type, int32 X, int32 Y, int32 Z);
-
-	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
-	void PlaceBackWall(ETileId type, int32 X, int32 Y, int32 Z);
+	void PlaceWall(EWallDirection dir, EWallId type, int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	void GenerateRandomMap(int32 X, int32 Y, int32 Z);
 
+	UFUNCTION(BlueprintCallable, Category=Generate)
+	void RebuildCubal(int32 CubalIndex);
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FStationMap Map;
+	TArray<FCubal> Cubal;
+	TMap<FCubalIndex, int32> CubalMap;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Size)
-	FVector TileSize;
+	FVector CubalSize;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Mesh)
 	UStaticMesh* FloorMesh;
