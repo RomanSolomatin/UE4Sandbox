@@ -24,6 +24,7 @@
 #include "Station.h"
 #include "Engine.h"
 #include "Net/UnrealNetwork.h"
+#include "Math/RandomStream.h"
 #include "Components/SceneComponent.h"
 #include "Components/ChildActorComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -61,6 +62,8 @@ AStation::AStation()
 	WallComponent->AttachTo(RootComponent);
 	DoorwayComponent->AttachTo(RootComponent);
 	WindowComponent->AttachTo(RootComponent);
+
+	Random.GenerateNewSeed();
 }
 
 
@@ -85,10 +88,44 @@ void AStation::OnConstruction(const FTransform& Transform)
 	WallComponent->SetStaticMesh(WallMesh);
 	DoorwayComponent->SetStaticMesh(DoorwayMesh);
 	WindowComponent->SetStaticMesh(WindowMesh);
+
+	Random.Reset();
+	ClearInstances();
+	CubalMap.Empty(Cubal.Num());
+	for (auto it = Cubal.CreateIterator(); it; ++it)
+	{
+		CubalMap.Add(it->Index, it.GetIndex());
+		PlaceCubal(it.GetIndex());
+	}
 }
 
 
-FCubal& AStation::FindOrAddCubal(int32 X, int32 Y, int32 Z)
+void AStation::ClearInstances()
+{
+	FloorComponent->ClearInstances();
+	FloorInstance.Empty();
+	CeilingComponent->ClearInstances();
+	CeilingInstance.Empty();
+	WallComponent->ClearInstances();
+	WallInstance.Empty();
+	DoorwayComponent->ClearInstances();
+	DoorwayInstance.Empty();
+	WindowComponent->ClearInstances();
+	WindowInstance.Empty();
+
+	for (auto it = Cubal.CreateIterator(); it; ++it)
+	{
+		it->FloorInstance = -1;
+		it->CeilingInstance = -1;
+		it->LeftWallInstance = -1;
+		it->BackWallInstance = -1;
+		it->RightWallInstance = -1;
+		it->FrontWallInstance = -1;
+	}
+}
+
+
+int32 AStation::FindOrAddCubal(int32 X, int32 Y, int32 Z)
 {
 	FCubalIndex Key(X, Y, Z);
 	int32* CubalIndex = CubalMap.Find(Key);
@@ -96,20 +133,24 @@ FCubal& AStation::FindOrAddCubal(int32 X, int32 Y, int32 Z)
 	CubalIndex = CubalMap.Find(Key);
 	if (CubalIndex == nullptr)
 	{
-		return Cubal[(CubalMap.Add(Key, Cubal.Add(FCubal(X, Y, Z))))];
+		int32 i = Cubal.Add(FCubal(X, Y, Z));
+		CubalMap.Add(Key, i);
+		return i;
 	}
 
-	return Cubal[*CubalIndex];
+	return *CubalIndex;
 }
 
 
 void AStation::PlaceFloor_Implementation(EFloorId Id, int32 X, int32 Y, int32 Z)
 {
-	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
+	int32 LocalCubalIndex = FindOrAddCubal(X, Y, Z);
+	FCubal& LocalCubal = Cubal[LocalCubalIndex];
 
 	if (LocalCubal.FloorInstance >= 0)
 	{
 		FloorComponent->RemoveInstance(LocalCubal.FloorInstance);
+		FloorInstance.RemoveSwap(LocalCubal.FloorInstance);
 		LocalCubal.FloorInstance = -1;
 	}
 
@@ -123,6 +164,7 @@ void AStation::PlaceFloor_Implementation(EFloorId Id, int32 X, int32 Y, int32 Z)
 
 		LocalCubal.Floor = Id;
 		LocalCubal.FloorInstance = FloorComponent->AddInstance(Transform);
+		FloorInstance.Add(LocalCubalIndex);
 	}
 }
 
@@ -135,11 +177,13 @@ bool AStation::PlaceFloor_Validate(EFloorId Id, int32 X, int32 Y, int32 Z)
 
 void AStation::PlaceCeiling_Implementation(ECeilingId Id, int32 X, int32 Y, int32 Z)
 {
-	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
+	int32 LocalCubalIndex = FindOrAddCubal(X, Y, Z);
+	FCubal& LocalCubal = Cubal[LocalCubalIndex];
 
 	if (LocalCubal.CeilingInstance >= 0)
 	{
 		CeilingComponent->RemoveInstance(LocalCubal.CeilingInstance);
+		CeilingInstance.RemoveSwap(LocalCubal.CeilingInstance);
 		LocalCubal.CeilingInstance = -1;
 	}
 
@@ -153,6 +197,7 @@ void AStation::PlaceCeiling_Implementation(ECeilingId Id, int32 X, int32 Y, int3
 
 		LocalCubal.Ceiling = Id;
 		LocalCubal.CeilingInstance = CeilingComponent->AddInstance(Transform);
+		CeilingInstance.Add(LocalCubalIndex);
 	}
 }
 
@@ -166,7 +211,8 @@ bool AStation::PlaceCeiling_Validate(ECeilingId Id, int32 X, int32 Y, int32 Z)
 void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, int32 X, int32 Y, int32 Z)
 {
 	FTransform Transform;
-	FCubal& LocalCubal = FindOrAddCubal(X, Y, Z);
+	int32 LocalCubalIndex = FindOrAddCubal(X, Y, Z);
+	FCubal& LocalCubal = Cubal[LocalCubalIndex];
 
 	if (LocalCubal.WallInstance(Direction) >= 0)
 	{
@@ -174,14 +220,17 @@ void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, in
 		{
 		case EWallId::Wall:
 			WallComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			WallInstance.RemoveSwap(LocalCubal.WallInstance(Direction));
 			LocalCubal.SetWallInstance(Direction, -1);
 			break;
 		case EWallId::Doorway:
 			DoorwayComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			DoorwayInstance.RemoveSwap(LocalCubal.WallInstance(Direction));
 			LocalCubal.SetWallInstance(Direction, -1);
 			break;
 		case EWallId::Window:
 			WindowComponent->RemoveInstance(LocalCubal.WallInstance(Direction));
+			WindowInstance.RemoveSwap(LocalCubal.WallInstance(Direction));
 			LocalCubal.SetWallInstance(Direction, -1);
 			break;
 		}
@@ -224,14 +273,17 @@ void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, in
 	case EWallId::Wall:
 		LocalCubal.SetWall(Direction, Id);
 		LocalCubal.SetWallInstance(Direction, WallComponent->AddInstance(Transform));
+		WallInstance.Add(LocalCubalIndex);
 		break;
 	case EWallId::Doorway:
 		LocalCubal.SetWall(Direction, Id);
 		LocalCubal.SetWallInstance(Direction, DoorwayComponent->AddInstance(Transform));
+		DoorwayInstance.Add(LocalCubalIndex);
 		break;
 	case EWallId::Window:
 		LocalCubal.SetWall(Direction, Id);
 		LocalCubal.SetWallInstance(Direction, WindowComponent->AddInstance(Transform));
+		WindowInstance.Add(LocalCubalIndex);
 		break;
 	}
 }
@@ -243,7 +295,7 @@ bool AStation::PlaceWall_Validate(EWallDirection Direction, EWallId Id, int32 X,
 }
 
 
-void AStation::RebuildCubal(int32 CubalIndex)
+void AStation::PlaceCubal(int32 CubalIndex)
 {
 	if (CubalIndex < 0 || CubalIndex >= Cubal.Num())
 	{
@@ -267,29 +319,41 @@ void AStation::RebuildCubal(int32 CubalIndex)
 }
 
 
-void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z)
+void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 {
-	for (int i = 0; i < X; ++i)
+	for (int32 i = 0; i < Rooms; ++i)
 	{
-		for (int j = 0; j < Y; ++j)
+		int32 Width = Random.RandRange(3, X);
+		int32 Length = Random.RandRange(3, Y);
+		int32 Height = Random.RandRange(1, Z);
+		int32 XOff = Random.RandRange(0, X * Rooms / 2);
+		int32 YOff = Random.RandRange(0, Y * Rooms / 2);
+
+		for (int32 j = XOff; j < XOff + Width; ++j)
 		{
-			PlaceFloor(EFloorId::Floor, i, j, 0);
-			PlaceCeiling(ECeilingId::Ceiling, i, j, Z - 1);
+			// Floor and Ceiling
+			for (int32 k = YOff; k < YOff + Length; ++k)
+			{
+				PlaceFloor(EFloorId::Floor, j, k, 0);
+				PlaceCeiling(ECeilingId::Ceiling, j, k, Height - 1);
+			}
+
+			// Front and Back Wall
+			for (int32 k = 0; k < Height; ++k)
+			{
+				PlaceWall(EWallDirection::Back, EWallId::Wall, j, YOff, k);
+				PlaceWall(EWallDirection::Front, EWallId::Wall, j, YOff + Length - 1, k);
+			}
 		}
 
-		for (int j = 0; j < Z; ++j)
+		for (int32 j = YOff; j < YOff + Length; ++j)
 		{
-			PlaceWall(EWallDirection::Back, EWallId::Wall, i, 0, j);
-			PlaceWall(EWallDirection::Front, EWallId::Wall, i, Y - 1, j);
-		}
-	}
-
-	for (int i = 0; i < Y; ++i)
-	{
-		for (int j = 0; j < Z; ++j)
-		{
-			PlaceWall(EWallDirection::Left, EWallId::Wall, X - 1, i, j);
-			PlaceWall(EWallDirection::Right, EWallId::Wall, 0, i, j);
+			// Right and Left Wall
+			for (int32 k = 0; k < Height; ++k)
+			{
+				PlaceWall(EWallDirection::Right, EWallId::Doorway, XOff, j, k);
+				PlaceWall(EWallDirection::Left, EWallId::Wall, XOff + Width - 1, j, k);
+			}
 		}
 	}
 }

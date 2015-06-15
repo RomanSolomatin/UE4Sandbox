@@ -26,6 +26,8 @@
 #include "Containers/Map.h"
 #include "GameFramework/Actor.h"
 #include "Components/ActorComponent.h"
+#include "Math/RandomStream.h"
+
 #include "Station.generated.h"
 
 
@@ -71,13 +73,13 @@ struct FCubalIndex
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 X;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Y;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Z;
 
 	FCubalIndex()
@@ -262,37 +264,37 @@ struct FCubal
 		}
 	}
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EFloorId Floor;
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 FloorInstance;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ECeilingId Ceiling;
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 CeilingInstance;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWallId BackWall;
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 BackWallInstance;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWallId FrontWall;
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 FrontWallInstance;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWallId RightWall;
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 RightWallInstance;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWallId LeftWall;
 
 	UPROPERTY(BlueprintReadOnly)
@@ -320,7 +322,8 @@ public:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	FCubal& FindOrAddCubal(int32 X, int32 Y, int32 Z);
+	UFUNCTION(BlueprintCallable, Category=Generate)
+	int32 FindOrAddCubal(int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
 	void PlaceFloor(EFloorId type, int32 X, int32 Y, int32 Z);
@@ -332,10 +335,14 @@ public:
 	void PlaceWall(EWallDirection dir, EWallId type, int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Category=Generate)
-	void GenerateRandomMap(int32 X, int32 Y, int32 Z);
+	void PlaceCubal(int32 CubalIndex);
+
+	UFUNCTION(BlueprintCallable, Category=Drawing)
+	void ClearInstances();
 
 	UFUNCTION(BlueprintCallable, Category=Generate)
-	void RebuildCubal(int32 CubalIndex);
+	void GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms);
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FCubal> Cubal;
@@ -365,17 +372,36 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UHierarchicalInstancedStaticMeshComponent *FloorComponent;
 
+	UPROPERTY(BlueprintReadOnly)
+	TArray<int32> FloorInstance;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UHierarchicalInstancedStaticMeshComponent *CeilingComponent;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<int32> CeilingInstance;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UHierarchicalInstancedStaticMeshComponent *WallComponent;
 
+	UPROPERTY(BlueprintReadOnly)
+	TArray<int32> WallInstance;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UHierarchicalInstancedStaticMeshComponent *DoorwayComponent;
 
+	UPROPERTY(BlueprintReadOnly)
+	TArray<int32> DoorwayInstance;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UHierarchicalInstancedStaticMeshComponent *WindowComponent;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<int32> WindowInstance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRandomStream Random;
+
 };
 
 /* vim: set noexpandtab: */
