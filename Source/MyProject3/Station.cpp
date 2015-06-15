@@ -89,6 +89,9 @@ void AStation::OnConstruction(const FTransform& Transform)
 	DoorwayComponent->SetStaticMesh(DoorwayMesh);
 	WindowComponent->SetStaticMesh(WindowMesh);
 
+	// This seems to be duplicating instances when used in a blueprint
+	// that calls GenerateRandomMap in the constructor.
+/*
 	Random.Reset();
 	ClearInstances();
 	CubalMap.Empty(Cubal.Num());
@@ -97,6 +100,7 @@ void AStation::OnConstruction(const FTransform& Transform)
 		CubalMap.Add(it->Index, it.GetIndex());
 		PlaceCubal(it.GetIndex());
 	}
+*/
 }
 
 
@@ -321,38 +325,76 @@ void AStation::PlaceCubal(int32 CubalIndex)
 
 void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 {
+	if (Rooms < 1) return;
+	if (X < 4) X = 4;
+	if (Y < 4) Y = 4;
+	if (Z < 1) Z = 1;
+
+	int32 MaxX = X * Rooms / 2;
+	int32 MaxY = Y * Rooms / 2;
+	TArray<bool> Map;
+	Map.AddZeroed(MaxX * MaxY * Z);
+	auto Idx = [MaxY, Z](int x, int y, int z) { return x * MaxY * Z + y * Z + z; };
+
+	//I don't really want to reset things here, but there is weird duplicating
+	//of data with a blueprint
+	ClearInstances();
+	Cubal.Empty();
+	CubalMap.Empty();
+
 	for (int32 i = 0; i < Rooms; ++i)
 	{
 		int32 Width = Random.RandRange(3, X);
 		int32 Length = Random.RandRange(3, Y);
 		int32 Height = Random.RandRange(1, Z);
-		int32 XOff = Random.RandRange(0, X * Rooms / 2);
-		int32 YOff = Random.RandRange(0, Y * Rooms / 2);
+		int32 XOff = Random.RandRange(0, MaxX - Width - 1);
+		int32 YOff = Random.RandRange(0, MaxY - Length - 1);
 
 		for (int32 j = XOff; j < XOff + Width; ++j)
 		{
-			// Floor and Ceiling
 			for (int32 k = YOff; k < YOff + Length; ++k)
 			{
-				PlaceFloor(EFloorId::Floor, j, k, 0);
-				PlaceCeiling(ECeilingId::Ceiling, j, k, Height - 1);
-			}
-
-			// Front and Back Wall
-			for (int32 k = 0; k < Height; ++k)
-			{
-				PlaceWall(EWallDirection::Back, EWallId::Wall, j, YOff, k);
-				PlaceWall(EWallDirection::Front, EWallId::Wall, j, YOff + Length - 1, k);
+				for (int32 l = 0; l < Height; ++l)
+				{
+					Map[Idx(j, k, l)] = true;
+				}
 			}
 		}
+	}
 
-		for (int32 j = YOff; j < YOff + Length; ++j)
+	for (int32 i = 0; i < MaxX; ++i)
+	{
+		for (int32 j = 0; j < MaxY; ++j)
 		{
-			// Right and Left Wall
-			for (int32 k = 0; k < Height; ++k)
+			for (int32 k = 0; k < Z; ++k)
 			{
-				PlaceWall(EWallDirection::Right, EWallId::Doorway, XOff, j, k);
-				PlaceWall(EWallDirection::Left, EWallId::Wall, XOff + Width - 1, j, k);
+				if (Map[Idx(i, j, k)])
+				{
+					if (i == 0 || !Map[Idx(i-1,j,k)])
+					{
+						PlaceWall(EWallDirection::Right, EWallId::Wall, i, j, k);
+					}
+					if (i == MaxX - 1 || !Map[Idx(i+1,j,k)])
+					{
+						PlaceWall(EWallDirection::Left, EWallId::Wall, i, j, k);
+					}
+					if (j == 0 || !Map[Idx(i,j-1,k)])
+					{
+						PlaceWall(EWallDirection::Back, EWallId::Wall, i, j, k);
+					}
+					if (j == MaxY - 1 || !Map[Idx(i,j+1,k)])
+					{
+						PlaceWall(EWallDirection::Front, EWallId::Wall, i, j, k);
+					}
+					if (k == 0 || !Map[Idx(i,j,k-1)])
+					{
+						PlaceFloor(EFloorId::Floor, i, j, k);
+					}
+					if (k == Z - 1 || !Map[Idx(i,j,k+1)])
+					{
+						PlaceCeiling(ECeilingId::Ceiling, i, j, k);
+					}
+				}
 			}
 		}
 	}
