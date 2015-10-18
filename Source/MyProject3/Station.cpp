@@ -309,17 +309,17 @@ void AStation::PlaceCubal(int32 CubalIndex)
 	FCubal &LocalCubal = Cubal[CubalIndex];
 
 	PlaceFloor(LocalCubal.Floor, LocalCubal.Index.X,
-		   LocalCubal.Index.Y, LocalCubal.Index.Z);
+	           LocalCubal.Index.Y, LocalCubal.Index.Z);
 	PlaceCeiling(LocalCubal.Ceiling, LocalCubal.Index.X,
-		     LocalCubal.Index.Y, LocalCubal.Index.Z);
+	             LocalCubal.Index.Y, LocalCubal.Index.Z);
 	PlaceWall(EWallDirection::Back, LocalCubal.BackWall,
-		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 	PlaceWall(EWallDirection::Front, LocalCubal.FrontWall,
-		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 	PlaceWall(EWallDirection::Left, LocalCubal.LeftWall,
-		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 	PlaceWall(EWallDirection::Right, LocalCubal.RightWall,
-		  LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
+	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 }
 
 
@@ -332,6 +332,8 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 
 	int32 MaxX = X * Rooms / 2;
 	int32 MaxY = Y * Rooms / 2;
+	int32 LastXCenter;
+	int32 LastYCenter;
 	TArray<bool> Map;
 	Map.AddZeroed(MaxX * MaxY * Z);
 	auto Idx = [MaxY, Z](int x, int y, int z) { return x * MaxY * Z + y * Z + z; };
@@ -350,6 +352,7 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 		int32 XOff = Random.RandRange(0, MaxX - Width - 1);
 		int32 YOff = Random.RandRange(0, MaxY - Length - 1);
 
+		/* Rooms */
 		for (int32 j = XOff; j < XOff + Width; ++j)
 		{
 			for (int32 k = YOff; k < YOff + Length; ++k)
@@ -360,6 +363,36 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 				}
 			}
 		}
+
+		/* Corridors */
+		int32 XCenter = XOff + Width / 2;
+		int32 YCenter = YOff + Length / 2;
+		if (i != 0)
+		{
+			for (int32 j = LastXCenter; j <= XCenter; ++j)
+			{
+				Map[Idx(j, LastYCenter, 0)] = true;
+				Map[Idx(j, YCenter, 0)] = true;
+			}
+			for (int32 j = XCenter; j < LastXCenter; ++j)
+			{
+				Map[Idx(j, LastYCenter, 0)] = true;
+				Map[Idx(j, YCenter, 0)] = true;
+			}
+
+			for (int32 j = LastYCenter; j <= YCenter; ++j)
+			{
+				Map[Idx(LastXCenter, j, 0)] = true;
+				Map[Idx(XCenter, j, 0)] = true;
+			}
+			for (int32 j = YCenter; j < LastYCenter; ++j)
+			{
+				Map[Idx(LastXCenter, j, 0)] = true;
+				Map[Idx(XCenter, j, 0)] = true;
+			}
+		}
+		LastXCenter = XCenter;
+		LastYCenter = YCenter;
 	}
 
 	for (int32 i = 0; i < MaxX; ++i)
