@@ -61,11 +61,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	int32 FindOrAddCubal(int32 X, int32 Y, int32 Z);
 
+	UFUNCTION(BlueprintCallable, Category=Generate)
+	EWallId CubalWallId(EWallDirection Dir, int32 X, int32 Y, int32 Z) const;
+
 	UFUNCTION(BlueprintCallable, Server, NetMulticast, Reliable, WithValidation, Category=Generate)
 	void PlaceWall(EWallDirection Dir, EWallId Type, int32 X, int32 Y, int32 Z);
 
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	void PlaceCubal(int32 CubalIndex);
+	void PlaceCubal(FCubal& C);
 
 	UFUNCTION(BlueprintCallable, Category=Drawing)
 	void ClearInstances();

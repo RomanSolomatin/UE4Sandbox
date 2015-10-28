@@ -31,9 +31,9 @@ UENUM(BlueprintType)
 enum class EWallDirection : uint8
 {
 	Front UMETA(DisplayName="Front"),
+	Left UMETA(DisplayName="Left"),
 	Back UMETA(DisplayName="Back"),
 	Right UMETA(DisplayName="Right"),
-	Left UMETA(DisplayName="Left"),
 	Top UMETA(DisplayName="Top"),
 	Bottom UMETA(DisplayName="Bottom"),
 };
@@ -176,5 +176,61 @@ struct FWall
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWallComponent SingleBevelXPosCornerOutXNeg;
 };
+
+
+static inline EWallDirection WallLeftDirection(EWallDirection From)
+{
+	switch (From)
+	{
+	default:
+	case EWallDirection::Front: return EWallDirection::Left;
+	case EWallDirection::Left:  return EWallDirection::Back;
+	case EWallDirection::Back:  return EWallDirection::Right;
+	case EWallDirection::Right: return EWallDirection::Front;
+	}
+}
+
+
+static inline EWallDirection WallRightDirection(EWallDirection From)
+{
+	switch (From)
+	{
+	default:
+	case EWallDirection::Front: return EWallDirection::Right;
+	case EWallDirection::Right: return EWallDirection::Back;
+	case EWallDirection::Back:  return EWallDirection::Left;
+	case EWallDirection::Left:  return EWallDirection::Front;
+	}
+}
+
+
+static inline int WallOffsetX(EWallDirection From, int Pos, int XOff, int YOff)
+{
+	switch (From)
+	{
+	default:
+	case EWallDirection::Front: return Pos + XOff;
+	case EWallDirection::Right: return Pos + YOff;
+	case EWallDirection::Back:  return Pos - XOff;
+	case EWallDirection::Left:  return Pos - YOff;
+	case EWallDirection::Top:   return Pos + XOff;
+	case EWallDirection::Bottom:return Pos + XOff;
+	}
+}
+
+
+static inline int WallOffsetY(EWallDirection From, int Pos, int XOff, int YOff)
+{
+	switch (From)
+	{
+	default:
+	case EWallDirection::Front: return Pos + YOff;
+	case EWallDirection::Right: return Pos + XOff;
+	case EWallDirection::Back:  return Pos - YOff;
+	case EWallDirection::Left:  return Pos - XOff;
+	case EWallDirection::Top:   return Pos - YOff;
+	case EWallDirection::Bottom:return Pos + YOff;
+	}
+}
 
 /* vim: set noexpandtab: */

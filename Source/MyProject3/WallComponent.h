@@ -31,40 +31,39 @@ class UStaticMesh;
 UENUM(BlueprintType)
 enum class EWallComponentId : uint8
 {
-	Single UMETA(DisplayName="Single"),
+	Single                       = 0x00 UMETA(DisplayName="Single"),
+	SingleCornerInXNeg           = 0x01 UMETA(DisplayName="SingleCornerInXNeg"),
+	SingleCornerOutXNeg          = 0x02 UMETA(DisplayName="SingleCornerOutXNeg"),
+	SingleBevelXNeg              = 0x03 UMETA(DisplayName="SingleBevelXNeg"),
 
-	// Corner Types
-	SingleCornerOutXNeg UMETA(DisplayName="SingleCornerOutXNeg"),
-	SingleCornerOutXPos UMETA(DisplayName="SingleCornerOutXPos"),
-	SingleCornerOutX UMETA(DisplayName="SingleCornerOutX"),
-	SingleCornerInXNeg UMETA(DisplayName="SingleCornerInXNeg"),
-	SingleCornerInXPos UMETA(DisplayName="SingleCornerInXPos"),
-	SingleCornerInX UMETA(DisplayName="SingleCornerInX"),
-	SingleCornerInXNegOutXPos UMETA(DisplayName="SingleCornerInXNegOutXPos"),
-	SingleCornerInXPosOutXNeg UMETA(DisplayName="SingleCornerInXPosOutXNeg"),
+	SingleCornerInXPos           = 0x04 UMETA(DisplayName="SingleCornerInXPos"),
+	SingleCornerInX              = 0x05 UMETA(DisplayName="SingleCornerInX"),
+	SingleCornerInXPosOutXNeg    = 0x06 UMETA(DisplayName="SingleCornerInXPosOutXNeg"),
+	SingleBevelXNegCornerInXPos  = 0x07 UMETA(DisplayName="SingleBevelXNegCornerInXPos"),
 
-	// Bevel Types
-	SingleBevelX UMETA(DisplayName="SingleBevelX"),
-	SingleBevelY UMETA(DisplayName="SingleBevelY"),
-	SingleBevelXY UMETA(DisplayName="SingleBevelXY"),
-	SingleBevelXNeg UMETA(DisplayName="SingleBevelXNeg"),
-	SingleBevelXPos UMETA(DisplayName="SingleBevelXPos"),
-	SingleBevelYNeg UMETA(DisplayName="SingleBevelYNeg"),
-	SingleBevelYPos UMETA(DisplayName="SingleBevelYPos"),
-	SingleBevelXNegY UMETA(DisplayName="SingleBevelXNegY"),
-	SingleBevelXPosY UMETA(DisplayName="SingleBevelXPosY"),
-	SingleBevelXYNeg UMETA(DisplayName="SingleBevelXYNeg"),
-	SingleBevelXYPos UMETA(DisplayName="SingleBevelXYPos"),
-	SingleBevelXNegYNeg UMETA(DisplayName="SingleBevelXNegYNeg"),
-	SingleBevelXNegYPos UMETA(DisplayName="SingleBevelXNegYPos"),
-	SingleBevelXPosYNeg UMETA(DisplayName="SingleBevelXPosYNeg"),
-	SingleBevelXPosYPos UMETA(DisplayName="SingleBevelXPosYPos"),
+	SingleCornerOutXPos          = 0x08 UMETA(DisplayName="SingleCornerOutXPos"),
+	SingleCornerInXNegOutXPos    = 0x09 UMETA(DisplayName="SingleCornerInXNegOutXPos"),
+	SingleCornerOutX             = 0x0a UMETA(DisplayName="SingleCornerOutX"),
+	SingleBevelXNegCornerOutXPos = 0x0b UMETA(DisplayName="SingleBevelXNegCornerOutXPos"),
 
-	// Mixed Corner-Bevel Types
-	SingleBevelXNegCornerInXPos UMETA(DisplayName="SingleBevelXNegCornerInXPos"),
-	SingleBevelXPosCornerInXNeg UMETA(DisplayName="SingleBevelXPosCornerInXNeg"),
-	SingleBevelXNegCornerOutXPos UMETA(DisplayName="SingleBevelXNegCornerOutXPos"),
-	SingleBevelXPosCornerOutXNeg UMETA(DisplayName="SingleBevelXPosCornerOutXNeg"),
+	SingleBevelXPos              = 0x0c UMETA(DisplayName="SingleBevelXPos"),
+	SingleBevelXPosCornerInXNeg  = 0x0d UMETA(DisplayName="SingleBevelXPosCornerInXNeg"),
+	SingleBevelXPosCornerOutXNeg = 0x0e UMETA(DisplayName="SingleBevelXPosCornerOutXNeg"),
+	SingleBevelX                 = 0x0f UMETA(DisplayName="SingleBevelX"),
+
+	// Only for floors and ceilings
+	SingleBevelYNeg              = 0x10 UMETA(DisplayName="SingleBevelYNeg"),
+	SingleBevelXNegYNeg          = 0x11 UMETA(DisplayName="SingleBevelXNegYNeg"),
+	SingleBevelXPosYNeg          = 0x12 UMETA(DisplayName="SingleBevelXPosYNeg"),
+	SingleBevelXYNeg             = 0x13 UMETA(DisplayName="SingleBevelXYNeg"),
+	SingleBevelYPos              = 0x14 UMETA(DisplayName="SingleBevelYNeg"),
+	SingleBevelXNegYPos          = 0x15 UMETA(DisplayName="SingleBevelXNegYPos"),
+	SingleBevelXPosYPos          = 0x16 UMETA(DisplayName="SingleBevelXPosYPos"),
+	SingleBevelXYPos             = 0x17 UMETA(DisplayName="SingleBevelXYPos"),
+	SingleBevelY                 = 0x18 UMETA(DisplayName="SingleBevelY"),
+	SingleBevelXNegY             = 0x19 UMETA(DisplayName="SingleBevelXNegY"),
+	SingleBevelXPosY             = 0x1a UMETA(DisplayName="SingleBevelXPosY"),
+	SingleBevelXY                = 0x1b UMETA(DisplayName="SingleBevelXY"),
 
 	Max UMETA(Hidden)
 };

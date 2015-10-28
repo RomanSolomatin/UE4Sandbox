@@ -61,7 +61,7 @@ AStation::AStation()
 		for (int j = (int)EWallComponentId::Single; j < (int)EWallComponentId::Max; ++j)
 		{
 			FWallComponent& LocalWall = FindWallComponentId((EWallId)i, (EWallComponentId)j);
-			LocalWall.Hism = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(FName(TEXT("Component"), count));
+			LocalWall.Hism = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(FName(TEXT("Component"), ++count));
 			LocalWall.Hism->AttachTo(RootComponent);
 		}
 	}
@@ -147,14 +147,165 @@ int32 AStation::FindOrAddCubal(int32 X, int32 Y, int32 Z)
 	return *CubalIndex;
 }
 
+EWallId AStation::CubalWallId(EWallDirection Dir, int32 X, int32 Y, int32 Z) const
+{
+	FCubalIndex Key(X, Y, Z);
+	const int32* CubalIndex = CubalMap.Find(Key);
+
+	if (CubalIndex == nullptr)
+	{
+		return EWallId::None;
+	}
+
+	return Cubal[*CubalIndex].Wall(Dir);
+}
+
 
 void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, int32 X, int32 Y, int32 Z)
 {
 	FTransform Transform;
-	FVector Translation = FVector(X, Y, Z) * CubalSize;
 	int32 LocalCubalIndex = FindOrAddCubal(X, Y, Z);
 	FCubal& LocalCubal = Cubal[LocalCubalIndex];
-	FWallComponent& LocalWall = FindWallComponentId(Id, EWallComponentId::Single);
+	EWallComponentId CompId;
+	int XNeg = 0;
+	int XPos = 0;
+	int YNeg = 0;
+	int YPos = 0;
+
+	// Get the right component type based on surrounding cubals
+	switch (Direction)
+	{
+	case EWallDirection::Top:
+		if (CubalWallId(Direction, X - 1, Y, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Right, X - 1, Y, Z + 1) != EWallId::None)
+		{
+			XNeg = 3;
+		}
+		if (CubalWallId(Direction, X + 1, Y, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Left, X + 1, Y, Z + 1) != EWallId::None)
+		{
+			XPos = 0xc;
+		}
+		// NOTE: Y is backwards from the way it "should" for the
+		// Ceiling, because I designed the meshes backwards
+		// to make the math easier
+		if (CubalWallId(Direction, X, Y - 1, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Front, X, Y - 1, Z + 1) != EWallId::None)
+		{
+			YNeg = 1;
+		}
+		if (CubalWallId(Direction, X, Y + 1, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Back, X, Y + 1, Z + 1) != EWallId::None)
+		{
+			YPos = 1;
+		}
+
+		if (YNeg && YPos)
+		{
+			CompId = (EWallComponentId)(0x18 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else if (YNeg)
+		{
+			CompId = (EWallComponentId)(0x10 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else if (YPos)
+		{
+			CompId = (EWallComponentId)(0x14 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else
+		{
+			CompId = (EWallComponentId)(XNeg | XPos);
+		}
+		break;
+	case EWallDirection::Bottom:
+		if (CubalWallId(Direction, X - 1, Y, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Right, X - 1, Y, Z - 1) != EWallId::None)
+		{
+			XNeg = 3;
+		}
+		if (CubalWallId(Direction, X + 1, Y, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Left, X + 1, Y, Z - 1) != EWallId::None)
+		{
+			XPos = 0xc;
+		}
+		if (CubalWallId(Direction, X, Y - 1, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Front, X, Y - 1, Z - 1) != EWallId::None)
+		{
+			YNeg = 1;
+		}
+		if (CubalWallId(Direction, X, Y + 1, Z) == EWallId::None
+		    && CubalWallId(EWallDirection::Back, X, Y + 1, Z - 1) != EWallId::None)
+		{
+			YPos = 1;
+		}
+
+		if (YNeg && YPos)
+		{
+			CompId = (EWallComponentId)(0x18 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else if (YNeg)
+		{
+			CompId = (EWallComponentId)(0x10 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else if (YPos)
+		{
+			CompId = (EWallComponentId)(0x14 | (XNeg >> 1) | (XPos >> 3));
+		}
+		else
+		{
+			CompId = (EWallComponentId)(XNeg | XPos);
+		}
+		break;
+	default:
+		if (LocalCubal.Wall(WallLeftDirection(Direction)) != EWallId::None)
+		{
+			XNeg = 1;
+		}
+		else if (CubalWallId(Direction, WallOffsetX(Direction, X, -1, 0), WallOffsetY(Direction, Y, -1, 0), Z) == EWallId::None
+		         && CubalWallId(WallRightDirection(Direction), WallOffsetX(Direction, X, -1, 1), WallOffsetY(Direction, Y, -1, 1), Z) != EWallId::None
+		         && CubalWallId(Direction, WallOffsetX(Direction, X, -1, -1), WallOffsetY(Direction, Y, -1, 0), Z - 1) == EWallId::None
+		         && CubalWallId(Direction, WallOffsetX(Direction, X, -1, 0), WallOffsetY(Direction, Y, -1, 0), Z + 1) == EWallId::None)
+		{
+			if (CubalWallId(WallRightDirection(Direction), WallOffsetX(Direction, X, -1, 1), WallOffsetY(Direction, Y, -1, 1), Z - 1) != EWallId::None
+			    || CubalWallId(WallRightDirection(Direction), WallOffsetX(Direction, X, -1, 1), WallOffsetY(Direction, Y, -1, 1), Z + 1) != EWallId::None)
+			{
+				XNeg = 3;
+			}
+			else
+			{
+				XNeg = 2;
+			}
+		}
+
+		if (LocalCubal.Wall(WallRightDirection(Direction)) != EWallId::None)
+		{
+			XPos = 4;
+		}
+		else if (CubalWallId(Direction, WallOffsetX(Direction, X, 1, 0), WallOffsetY(Direction, Y, 1, 0), Z) == EWallId::None
+		         && CubalWallId(WallLeftDirection(Direction), WallOffsetX(Direction, X, 1, 1), WallOffsetY(Direction, Y, 1, 1), Z) != EWallId::None
+		         && CubalWallId(Direction, WallOffsetX(Direction, X, 1, 0), WallOffsetY(Direction, Y, 1, 0), Z - 1) == EWallId::None
+		         &&CubalWallId(Direction, WallOffsetX(Direction, X, 1, 0), WallOffsetY(Direction, Y, 1, 0), Z + 1) == EWallId::None)
+		{
+			if (CubalWallId(WallLeftDirection(Direction), WallOffsetX(Direction, X, 1, 1), WallOffsetY(Direction, Y, 1, 1), Z - 1) != EWallId::None
+			    || CubalWallId(WallLeftDirection(Direction), WallOffsetX(Direction, X, 1, 1), WallOffsetY(Direction, Y, 1, 1), Z + 1) != EWallId::None)
+			{
+				XPos = 0xc;
+			}
+			else
+			{
+				XPos = 8;
+			}
+		}
+
+		CompId = (EWallComponentId)(XNeg | XPos);
+		break;
+	}
+
+	// Do we need to do anything?
+	if (LocalCubal.WallComponent(Direction) == CompId && LocalCubal.WallInstance(Direction) >= 0)
+	{
+		return;
+	}
 
 	if (LocalCubal.WallInstance(Direction) >= 0)
 	{
@@ -172,8 +323,10 @@ void AStation::PlaceWall_Implementation(EWallDirection Direction, EWallId Id, in
 		LocalCubal.SetWallComponent(Direction, EWallComponentId::Single);
 	}
 
+	FWallComponent& LocalWall = FindWallComponentId(Id, EWallComponentId::Single);
 	if (LocalWall.Hism != nullptr)
 	{
+		FVector Translation = FVector(X, Y, Z) * CubalSize;
 		switch (Direction)
 		{
 		case EWallDirection::Left:
@@ -214,6 +367,16 @@ bool AStation::PlaceWall_Validate(EWallDirection Direction, EWallId Id, int32 X,
 }
 
 
+void AStation::PlaceCubal(FCubal& C)
+{
+	PlaceWall(EWallDirection::Back, C.BackWall, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Front, C.FrontWall, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Left, C.LeftWall, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Right, C.RightWall, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Top, C.Ceiling, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Bottom, C.Floor, C.Index.X, C.Index.Y, C.Index.Z);
+}
+
 void AStation::PlaceCubal(int32 CubalIndex)
 {
 	if (CubalIndex < 0 || CubalIndex >= Cubal.Num())
@@ -221,20 +384,8 @@ void AStation::PlaceCubal(int32 CubalIndex)
 		return;
 	}
 
-	FCubal& LocalCubal = Cubal[CubalIndex];
+	PlaceCubal(Cubal[CubalIndex]);
 
-	PlaceWall(EWallDirection::Back, LocalCubal.BackWall,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
-	PlaceWall(EWallDirection::Front, LocalCubal.FrontWall,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
-	PlaceWall(EWallDirection::Left, LocalCubal.LeftWall,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
-	PlaceWall(EWallDirection::Right, LocalCubal.RightWall,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
-	PlaceWall(EWallDirection::Top, LocalCubal.Ceiling,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
-	PlaceWall(EWallDirection::Bottom, LocalCubal.Floor,
-	          LocalCubal.Index.X, LocalCubal.Index.Y, LocalCubal.Index.Z);
 }
 
 
@@ -340,6 +491,7 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 		LastYCenter = YCenter;
 	}
 
+	// Build all the walls
 	for (int32 i = 0; i < MaxX; ++i)
 	{
 		for (int32 j = 0; j < MaxY; ++j)
@@ -349,60 +501,67 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 				int32 RoomType = Map[Idx(i, j, k)];
 				if (RoomType)
 				{
+					FCubal& CurrentCubal = Cubal[FindOrAddCubal(i,j,k)];
 					if (i == 0 || !Map[Idx(i-1,j,k)])
 					{
-						PlaceWall(EWallDirection::Right, EWallId::Wall, i, j, k);
-						PlaceWall(EWallDirection::Left, EWallId::Wall, i-1, j, k);
+						CurrentCubal.SetWall(EWallDirection::Right, EWallId::Wall);
+						Cubal[FindOrAddCubal(i-1,j,k)].SetWall(EWallDirection::Left, EWallId::Wall);
 					}
 					else if (RoomType != Map[Idx(i-1,j,k)])
 					{
-						PlaceWall(EWallDirection::Right, EWallId::Doorway, i, j, k);
+						CurrentCubal.SetWall(EWallDirection::Right, EWallId::Doorway);
 					}
 
 					if (i == MaxX - 1 || !Map[Idx(i+1,j,k)])
 					{
-						PlaceWall(EWallDirection::Left, EWallId::Wall, i, j, k);
-						PlaceWall(EWallDirection::Right, EWallId::Wall, i+1, j, k);
+						CurrentCubal.SetWall(EWallDirection::Left, EWallId::Wall);
+						Cubal[FindOrAddCubal(i+1,j,k)].SetWall(EWallDirection::Right, EWallId::Wall);
 					}
 					else if (RoomType != Map[Idx(i+1,j,k)])
 					{
-						PlaceWall(EWallDirection::Left, EWallId::Doorway, i, j, k);
+						CurrentCubal.SetWall(EWallDirection::Left, EWallId::Doorway);
 					}
 
 					if (j == 0 || !Map[Idx(i,j-1,k)])
 					{
-						PlaceWall(EWallDirection::Back, EWallId::Wall, i, j, k);
-						PlaceWall(EWallDirection::Front, EWallId::Wall, i, j-1, k);
+						CurrentCubal.SetWall(EWallDirection::Back, EWallId::Wall);
+						Cubal[FindOrAddCubal(i,j-1,k)].SetWall(EWallDirection::Front, EWallId::Wall);
 					}
 					else if (RoomType != Map[Idx(i,j-1,k)])
 					{
-						PlaceWall(EWallDirection::Back, EWallId::Doorway, i, j, k);
+						CurrentCubal.SetWall(EWallDirection::Back, EWallId::Doorway);
 					}
 
 					if (j == MaxY - 1 || !Map[Idx(i,j+1,k)])
 					{
-						PlaceWall(EWallDirection::Front, EWallId::Wall, i, j, k);
-						PlaceWall(EWallDirection::Back, EWallId::Wall, i, j+1, k);
+						CurrentCubal.SetWall(EWallDirection::Front, EWallId::Wall);
+						Cubal[FindOrAddCubal(i,j+1,k)].SetWall(EWallDirection::Back, EWallId::Wall);
 					}
 					else if (RoomType != Map[Idx(i,j+1,k)])
 					{
-						PlaceWall(EWallDirection::Front, EWallId::Doorway, i, j, k);
+						CurrentCubal.SetWall(EWallDirection::Front, EWallId::Doorway);
 					}
 
 					if (k == 0 || !Map[Idx(i,j,k-1)])
 					{
-						PlaceWall(EWallDirection::Bottom, EWallId::Floor, i, j, k);
-						PlaceWall(EWallDirection::Top, EWallId::Ceiling, i, j, k-1);
+						CurrentCubal.SetWall(EWallDirection::Bottom, EWallId::Floor);
+						Cubal[FindOrAddCubal(i,j,k-1)].SetWall(EWallDirection::Top, EWallId::Ceiling);
 					}
 
 					if (k == Z - 1 || !Map[Idx(i,j,k+1)])
 					{
-						PlaceWall(EWallDirection::Top, EWallId::Ceiling, i, j, k);
-						PlaceWall(EWallDirection::Bottom, EWallId::Floor, i, j, k+1);
+						CurrentCubal.SetWall(EWallDirection::Top, EWallId::Ceiling);
+						Cubal[FindOrAddCubal(i,j,k+1)].SetWall(EWallDirection::Bottom, EWallId::Floor);
 					}
 				}
 			}
 		}
+	}
+
+	// Place all the cubals
+	for (auto& CurrentCubal : Cubal)
+	{
+		PlaceCubal(CurrentCubal);
 	}
 }
 
