@@ -204,32 +204,32 @@ static inline EWallDirection WallRightDirection(EWallDirection From)
 }
 
 
-static inline int WallOffsetX(EWallDirection From, int Pos, int XOff, int YOff)
+static inline int WallOffsetX(EWallDirection From, int Pos, int Forward, int Right)
 {
 	switch (From)
 	{
 	default:
-	case EWallDirection::Front: return Pos + XOff;
-	case EWallDirection::Right: return Pos + YOff;
-	case EWallDirection::Back:  return Pos - XOff;
-	case EWallDirection::Left:  return Pos - YOff;
-	case EWallDirection::Top:   return Pos + XOff;
-	case EWallDirection::Bottom:return Pos + XOff;
+	case EWallDirection::Front: return Pos + Forward;
+	case EWallDirection::Right: return Pos - Right;
+	case EWallDirection::Back:  return Pos - Forward;
+	case EWallDirection::Left:  return Pos + Right;
+	case EWallDirection::Top:   return Pos;
+	case EWallDirection::Bottom:return Pos;
 	}
 }
 
 
-static inline int WallOffsetY(EWallDirection From, int Pos, int XOff, int YOff)
+static inline int WallOffsetY(EWallDirection From, int Pos, int Forward, int Right)
 {
 	switch (From)
 	{
 	default:
-	case EWallDirection::Front: return Pos + YOff;
-	case EWallDirection::Right: return Pos + XOff;
-	case EWallDirection::Back:  return Pos - YOff;
-	case EWallDirection::Left:  return Pos - XOff;
-	case EWallDirection::Top:   return Pos - YOff;
-	case EWallDirection::Bottom:return Pos + YOff;
+	case EWallDirection::Front: return Pos + Right;
+	case EWallDirection::Right: return Pos + Forward;
+	case EWallDirection::Back:  return Pos - Right;
+	case EWallDirection::Left:  return Pos - Forward;
+	case EWallDirection::Top:   return Pos + Right;
+	case EWallDirection::Bottom:return Pos + Right;
 	}
 }
 
