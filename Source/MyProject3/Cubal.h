@@ -359,7 +359,7 @@ struct FCubal
 	UPROPERTY(BlueprintReadOnly)
 	int32 LeftWallInstance;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FCubalIndex Index;
 };
 

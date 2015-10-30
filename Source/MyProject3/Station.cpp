@@ -90,6 +90,8 @@ void AStation::OnConstruction(const FTransform& Transform)
 		{
 			FWallComponent& LocalWall = FindWallComponentId((EWallId)i, (EWallComponentId)j);
 			LocalWall.Hism->SetStaticMesh(LocalWall.Mesh);
+			// Trying to fix a weird offset that can sometimes happens in blueprints
+			LocalWall.Hism->SetRelativeLocation(FVector(0, 0, 0), false, nullptr);
 		}
 	}
 
@@ -116,6 +118,8 @@ void AStation::ClearInstances()
 		{
 			FWallComponent& LocalWall = FindWallComponentId((EWallId)i, (EWallComponentId)j);
 			LocalWall.Hism->ClearInstances();
+			// Trying to fix a weird offset that can sometimes happens in blueprints
+			LocalWall.Hism->SetRelativeLocation(FVector(0, 0, 0), false, nullptr);
 			LocalWall.Instance.Empty();
 		}
 	}
@@ -432,16 +436,9 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 	Map.AddZeroed(MaxX * MaxY * Z);
 	auto Idx = [MaxY, Z](int x, int y, int z) { return x * MaxY * Z + y * Z + z; };
 
-	//I don't really want to reset things here, but there is weird duplicating
-	//of data with a blueprint
-
 	ClearInstances();
-	CubalMap.Empty(Cubal.Num());
-	for (int i = 0; i < Cubal.Num(); ++i)
-	{
-		CubalMap.Add(Cubal[i].Index, i);
-		PlaceCubal(i);
-	}
+	Cubal.Empty();
+	CubalMap.Empty();
 	Random.Reset();
 
 	for (int32 i = 0; i < Rooms; ++i)
