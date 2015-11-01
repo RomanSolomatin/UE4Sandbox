@@ -25,7 +25,6 @@
 #include "Containers/Array.h"
 #include "Containers/Map.h"
 #include "GameFramework/Actor.h"
-#include "Components/ActorComponent.h"
 #include "Math/RandomStream.h"
 
 #include "Cubal.h"
@@ -77,6 +76,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	void GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms);
 
+	UFUNCTION(BlueprintCallable, Category=Generate)
+	void AddLight(int32 X, int32 Y, int32 Z, EWallDirection Direction);
 protected:
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	FWall& FindWallId(EWallId Id);
@@ -114,6 +115,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWall Floor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Mesh)
+	UClass* WallLight;
 };
 
 /* vim: set noexpandtab: */

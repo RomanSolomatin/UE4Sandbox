@@ -27,6 +27,9 @@
 #include "Cubal.generated.h"
 
 
+class UChildActorComponent;
+
+
 USTRUCT(BluePrintable)
 struct FCubalIndex
 {
@@ -358,6 +361,9 @@ struct FCubal
 
 	UPROPERTY(BlueprintReadOnly)
 	int32 LeftWallInstance;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<UChildActorComponent *> Decor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FCubalIndex Index;
