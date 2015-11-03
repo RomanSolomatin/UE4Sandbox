@@ -363,7 +363,7 @@ struct FCubal
 	int32 LeftWallInstance;
 
 	UPROPERTY(BlueprintReadOnly)
-	TArray<UChildActorComponent *> Decor;
+	TArray<UChildActorComponent *> Prop;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FCubalIndex Index;

@@ -77,7 +77,7 @@ public:
 	void GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms);
 
 	UFUNCTION(BlueprintCallable, Category=Generate)
-	void AddLight(int32 X, int32 Y, int32 Z, EWallDirection Direction);
+	void AddProp(UClass* Prop, int32 X, int32 Y, int32 Z, EWallDirection Direction);
 protected:
 	UFUNCTION(BlueprintCallable, Category=Generate)
 	FWall& FindWallId(EWallId Id);
@@ -118,6 +118,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Mesh)
 	UClass* WallLight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Mesh)
+	UClass* Airlock;
 };
 
 /* vim: set noexpandtab: */

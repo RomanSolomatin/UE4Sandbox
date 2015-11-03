@@ -124,23 +124,24 @@ void AStation::ClearInstances()
 		}
 	}
 
-	for (auto& C : Cubal)
+	for (auto& Cube : Cubal)
 	{
-		for (auto& D : C.Decor)
+		for (auto& Prop : Cube.Prop)
 		{
-			if (D != nullptr)
+			if (Prop != nullptr)
 			{
-				D->DestroyChildActor();
-				D->DestroyComponent();
+				Prop->DestroyChildActor();
+				Prop->UnregisterComponent();
+				Prop->DestroyComponent();
 			}
 		}
-		C.Decor.Empty();
-		C.FloorInstance = -1;
-		C.CeilingInstance = -1;
-		C.LeftWallInstance = -1;
-		C.BackWallInstance = -1;
-		C.RightWallInstance = -1;
-		C.FrontWallInstance = -1;
+		Cube.Prop.Empty();
+		Cube.FloorInstance = -1;
+		Cube.CeilingInstance = -1;
+		Cube.LeftWallInstance = -1;
+		Cube.BackWallInstance = -1;
+		Cube.RightWallInstance = -1;
+		Cube.FrontWallInstance = -1;
 	}
 }
 
@@ -406,14 +407,14 @@ bool AStation::PlaceWall_Validate(EWallDirection Direction, EWallId Id, int32 X,
 }
 
 
-void AStation::PlaceCubal(FCubal& C)
+void AStation::PlaceCubal(FCubal& Cube)
 {
-	PlaceWall(EWallDirection::Back, C.BackWall, C.Index.X, C.Index.Y, C.Index.Z);
-	PlaceWall(EWallDirection::Front, C.FrontWall, C.Index.X, C.Index.Y, C.Index.Z);
-	PlaceWall(EWallDirection::Left, C.LeftWall, C.Index.X, C.Index.Y, C.Index.Z);
-	PlaceWall(EWallDirection::Right, C.RightWall, C.Index.X, C.Index.Y, C.Index.Z);
-	PlaceWall(EWallDirection::Top, C.Ceiling, C.Index.X, C.Index.Y, C.Index.Z);
-	PlaceWall(EWallDirection::Bottom, C.Floor, C.Index.X, C.Index.Y, C.Index.Z);
+	PlaceWall(EWallDirection::Back, Cube.BackWall, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
+	PlaceWall(EWallDirection::Front, Cube.FrontWall, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
+	PlaceWall(EWallDirection::Left, Cube.LeftWall, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
+	PlaceWall(EWallDirection::Right, Cube.RightWall, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
+	PlaceWall(EWallDirection::Top, Cube.Ceiling, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
+	PlaceWall(EWallDirection::Bottom, Cube.Floor, Cube.Index.X, Cube.Index.Y, Cube.Index.Z);
 }
 
 void AStation::PlaceCubal(int32 CubalIndex)
@@ -428,7 +429,7 @@ void AStation::PlaceCubal(int32 CubalIndex)
 }
 
 
-void AStation::AddLight(int32 X, int32 Y, int32 Z, EWallDirection Direction)
+void AStation::AddProp(UClass* Class, int32 X, int32 Y, int32 Z, EWallDirection Direction)
 {
 	FCubal& CurrentCubal = Cubal[FindOrAddCubal(X, Y, Z)];
 	FVector Location;
@@ -452,15 +453,15 @@ void AStation::AddLight(int32 X, int32 Y, int32 Z, EWallDirection Direction)
 		break;
 	}
 
-	Component = ConstructObject<UChildActorComponent>(UChildActorComponent::StaticClass(), this, NAME_None, RF_Transient);
+	Component = NewObject<UChildActorComponent>(this);
 	if (Component != nullptr)
 	{
-		Component->RegisterComponent();
-		Component->SetChildActorClass(WallLight);
+		Component->SetChildActorClass(Class);
 		Component->SetRelativeLocation(Location);
 		Component->SetRelativeRotation(Rotation);
 		Component->AttachTo(RootComponent);
-		CurrentCubal.Decor.Add(Component);
+		Component->RegisterComponent();
+		CurrentCubal.Prop.Add(Component);
 	}
 }
 
@@ -577,7 +578,7 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 						Cubal[FindOrAddCubal(i-1,j,k)].SetWall(EWallDirection::Front, EWallId::Wall);
 						if (k == 0 && Random.RandRange(0.0, 100.0) < 20.0)
 						{
-							AddLight(i, j, k, EWallDirection::Back);
+							AddProp(WallLight, i, j, k, EWallDirection::Back);
 						}
 					}
 					else if (RoomType != Map[Idx(i-1,j,k)])
@@ -591,12 +592,13 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 						Cubal[FindOrAddCubal(i+1,j,k)].SetWall(EWallDirection::Back, EWallId::Wall);
 						if (k == 0 && Random.RandRange(0.0, 100.0) < 20.0)
 						{
-							AddLight(i, j, k, EWallDirection::Front);
+							AddProp(WallLight, i, j, k, EWallDirection::Front);
 						}
 					}
 					else if (RoomType != Map[Idx(i+1,j,k)])
 					{
 						CurrentCubal.SetWall(EWallDirection::Front, EWallId::Doorway);
+						AddProp(Airlock, i, j, k, EWallDirection::Front);
 					}
 
 					if (j == 0 || !Map[Idx(i,j-1,k)])
@@ -605,7 +607,7 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 						Cubal[FindOrAddCubal(i,j-1,k)].SetWall(EWallDirection::Right, EWallId::Wall);
 						if (k == 0 && Random.RandRange(0.0, 100.0) < 20.0)
 						{
-							AddLight(i, j, k, EWallDirection::Left);
+							AddProp(WallLight, i, j, k, EWallDirection::Left);
 						}
 					}
 					else if (RoomType != Map[Idx(i,j-1,k)])
@@ -619,12 +621,13 @@ void AStation::GenerateRandomMap(int32 X, int32 Y, int32 Z, int32 Rooms)
 						Cubal[FindOrAddCubal(i,j+1,k)].SetWall(EWallDirection::Left, EWallId::Wall);
 						if (k == 0 && Random.RandRange(0.0, 100.0) < 20.0)
 						{
-							AddLight(i, j, k, EWallDirection::Right);
+							AddProp(WallLight, i, j, k, EWallDirection::Right);
 						}
 					}
 					else if (RoomType != Map[Idx(i,j+1,k)])
 					{
 						CurrentCubal.SetWall(EWallDirection::Right, EWallId::Doorway);
+						AddProp(Airlock, i, j, k, EWallDirection::Right);
 					}
 
 					if (k == 0 || !Map[Idx(i,j,k-1)])
