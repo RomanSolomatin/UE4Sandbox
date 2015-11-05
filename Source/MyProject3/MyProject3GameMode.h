@@ -12,5 +12,4 @@ public:
 	AMyProject3GameMode(const FObjectInitializer& ObjectInitializer);
 };
 
-
-
+/* vim: set noexpandtab: */

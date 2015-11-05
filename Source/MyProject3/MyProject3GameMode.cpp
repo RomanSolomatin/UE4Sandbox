@@ -14,3 +14,5 @@ AMyProject3GameMode::AMyProject3GameMode(const FObjectInitializer& ObjectInitial
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 }
+
+/* vim: set noexpandtab: */

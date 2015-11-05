@@ -9,3 +9,5 @@ public class MyProject3 : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
 	}
 }
+
+/* vim: set noexpandtab: */
