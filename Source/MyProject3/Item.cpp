@@ -69,8 +69,9 @@ bool AItem::CanUse(ACharacter* Character, UActorComponent* Component)
 // Attempt to use item
 void AItem::Use_Implementation(ACharacter* Character, UActorComponent* Component)
 {
-	UE_LOG(LogTemp, Log, TEXT("Hello"));//, *GetNameSafe(this), *GetNameSafe(Impact.GetActor()));
-	Destroy();
+	if (StaticMeshComponent) {
+		StaticMeshComponent->DestroyComponent();
+	}
 }
 
 // Validate inputs
